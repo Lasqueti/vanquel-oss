@@ -1,0 +1,7 @@
+Example Dental is a family dental clinic.
+Hours: Monday to Friday 9:00 to 17:00, closed weekends and public holidays.
+Address: 123 Example Street, Springfield.
+Services: checkups and cleanings (30 minutes), fillings, whitening.
+New patients are welcome. Bring photo id and your insurance card.
+Cancellations: please give 24 hours notice.
+We do not give medical advice by text. For emergencies, call your local emergency number.
