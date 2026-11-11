@@ -1,0 +1,29 @@
+{
+  "name": "vanquel-oss",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A self-hosted AI agent people can text: iMessage on a Mac mini and jailbroken iPhones, plus email, Slack and SMS.",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "start": "node src/server.ts",
+    "bridge:mac": "node bridges/mac/bridge.ts",
+    "bridge:phone": "node bridges/phone/bridge.ts",
+    "worker": "node worker/browser-worker.ts",
+    "watchdog": "node src/ops/line-watchdog.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test --test-reporter=spec \"tests/**/*.test.ts\"",
+    "scan": "node scripts/scan-secrets.ts",
+    "check": "npm run typecheck && npm test && npm run scan"
+  },
+  "optionalDependencies": {
+    "puppeteer-core": "^24.10.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "typescript": "^5.8.3"
+  }
+}

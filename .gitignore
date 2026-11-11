@@ -1,0 +1,12 @@
+node_modules/
+.env
+.env.*
+!.env.example
+lines/*.env
+!lines/example.env
+data/
+*.sqlite
+*.sqlite-*
+*.log
+.DS_Store
+business.txt
