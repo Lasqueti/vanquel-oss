@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  launchd daemon that keeps SMServer's HTTP server running on the phone.
+  The SMServer app icon does NOT open the server port; only this daemon does.
+
+  Install (rootless jailbreak):  /var/jb/Library/LaunchDaemons/com.example.smserver.plist
+  owner root:wheel, mode 644, then:  launchctl load /var/jb/Library/LaunchDaemons/com.example.smserver.plist
+
+  Replace CHANGE_ME with a long random password (the bridge's SMSERVER_PASSWORD).
+  Dopamine phones: put the smserver-launch path (ios/smserver-launch.c) first in
+  ProgramArguments, in place of the SMServer path; the launcher execs SMServer
+  with the remaining arguments.
+
+  --no_secure turns SMServer's TLS off. That is why the phone must sit on a
+  network only your Mac mini can reach. See docs/PHONES.md, "Network".
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.example.smserver</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/var/jb/Applications/SMServer.app/SMServer</string>
+        <string>--no_secure</string>
+        <string>--background</string>
+        <string>--server_port</string>
+        <string>8741</string>
+        <string>--socket_port</string>
+        <string>8740</string>
+        <string>--password</string>
+        <string>CHANGE_ME</string>
+    </array>
+    <key>UserName</key>
+    <string>mobile</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardErrorPath</key>
+    <string>/var/mobile/smserver.err</string>
+</dict>
+</plist>
