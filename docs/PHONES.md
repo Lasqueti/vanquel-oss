@@ -29,7 +29,7 @@ The iPhone 7 works the same way. The iPhone 8 also works, but on iOS 16.7.x the 
 |---|---|---|---|---|
 | iPhone 6s | 15.8.x | Tips app route: TrollStore, then Dopamine | Open the Dopamine app, tap Jailbreak. No cable. | **Recommended** |
 | iPhone 7 | 15.8.x | Tips app route: TrollStore, then Dopamine | Same as above | Works just as well |
-| iPhone 7 | 13.x | checkra1n (rootful) | USB re-jailbreak from a Mac | Worked, more upkeep |
+| iPhone 7 | 13.x | checkra1n (rootful) | USB re-jailbreak from a Mac | **Not recommended.** Barely worked the first time, and the re-jailbreak after a reboot failed. |
 | iPhone 8 | 16.7.x | palera1n (rootless) | USB re-jailbreak from a Mac, with DFU timing | Works, most upkeep |
 
 On iOS 16.7.x the TrollStore route is not available (its support stops around 16.6.1 and the 16.7 release candidate), so an iPhone 8 on 16.7.x stays on palera1n. Check [ios.cfw.guide](https://ios.cfw.guide) for the current support ranges before you buy; they change.
@@ -70,7 +70,7 @@ Follow the official guide for your exact model and iOS version on [ios.cfw.guide
 - The DFU button timing is hard to do by hand on A11. What worked for us: run palera1n on the Mac with its screen in view and follow palera1n's own on-screen countdown helper.
 - Every full reboot means plugging the phone into the Mac and running palera1n again.
 
-**checkra1n (iOS 14 and older).** Rootful, semi-tethered: like palera1n, every full reboot needs a USB re-jailbreak.
+**checkra1n (iOS 14 and older).** Rootful, semi-tethered: like palera1n, every full reboot needs a USB re-jailbreak. **We do not recommend it.** On our iPhone 7 it barely worked the first time and failed the second time. Avoid phones stuck on iOS 13 or 14 if you can.
 
 ## Installing SMServer
 
