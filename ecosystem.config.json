@@ -1,9 +1,43 @@
 {
   "apps": [
-    { "name": "agent", "script": "npm", "args": "start", "max_restarts": 10, "min_uptime": "30s" },
-    { "name": "bridge-mac", "script": "npm", "args": "run bridge:mac", "max_restarts": 10, "min_uptime": "30s" },
-    { "name": "bridge-phone1", "script": "npm", "args": "run bridge:phone -- lines/phone1.env", "max_restarts": 10, "min_uptime": "30s" },
-    { "name": "watchdog", "script": "npm", "args": "run watchdog" },
-    { "name": "browser-worker", "script": "npm", "args": "run worker", "max_memory_restart": "1G" }
+    {
+      "name": "agent",
+      "script": "npm",
+      "args": "start",
+      "max_restarts": 10,
+      "min_uptime": "30s"
+    },
+    {
+      "name": "bridge-mac",
+      "script": "npm",
+      "args": "run bridge:mac",
+      "max_restarts": 10,
+      "min_uptime": "30s"
+    },
+    {
+      "name": "bridge-phone1",
+      "script": "npm",
+      "args": "run bridge:phone -- lines/phone1.env",
+      "max_restarts": 10,
+      "min_uptime": "30s"
+    },
+    {
+      "name": "watchdog",
+      "script": "npm",
+      "args": "run watchdog"
+    },
+    {
+      "name": "browser-worker",
+      "script": "npm",
+      "args": "run worker",
+      "max_memory_restart": "1G"
+    },
+    {
+      "name": "games",
+      "script": "npm",
+      "args": "run games",
+      "max_restarts": 10,
+      "min_uptime": "30s"
+    }
   ]
 }

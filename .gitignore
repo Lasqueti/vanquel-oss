@@ -10,3 +10,5 @@ data/
 *.log
 .DS_Store
 business.txt
+ios/tweak/.theos/
+ios/tweak/packages/
