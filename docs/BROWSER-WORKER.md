@@ -15,6 +15,8 @@ It is a deliberately small rebuild of the production version: same shape (separa
 
 - **Spending money.** It stops before clicking anything labelled buy, pay, checkout, place order, subscribe, donate and similar, and hands back.
 - **Secrets.** It will not type into password, card, security code or one-time code fields.
+
+When a task's answer is a short list (stores, products, opening times), the worker can return it with its summary, and with `CARDS=1` the agent server sends it as a result card after the summary text. The server trims and caps the list; nothing on the card is clickable or loads anything.
 - **Your network.** It will not open localhost, private network ranges, link-local or cloud metadata addresses; every request Chrome makes is checked, not just the address bar.
 - **Instructions inside pages.** Page text is fenced and the model is told it is data. Invisible characters that can hide instructions are stripped. This lowers the risk of prompt injection; it does not remove it. Do not give the worker access to anything you could not afford a hostile web page to see.
 

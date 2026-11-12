@@ -38,7 +38,7 @@ Bridges keep a small JSON state file each in `data/` (their cursors).
 
 `src/agent/llm.ts` speaks the OpenAI-compatible Chat Completions API with tool calls, using plain `fetch`. Point `LLM_BASE_URL` at any provider or local server that implements it. The system prompt (`src/agent/prompt.ts`) is generic on purpose; your business facts go in `BUSINESS_INFO_FILE`.
 
-Tools (`src/agent/tools.ts`): `set_reminder`, `list_reminders`, `cancel_reminder`, `list_open_slots`, `book_slot`, `list_my_bookings`, `cancel_booking`, `handoff_to_human`, and `browse_web` when the worker is configured. Every tool acts only for the person in the conversation.
+Tools (`src/agent/tools.ts`): `set_reminder`, `list_reminders`, `cancel_reminder`, `list_open_slots`, `book_slot`, `list_my_bookings`, `cancel_booking`, `handoff_to_human`, `browse_web` when the worker is configured, `reply_with_voice_note` when text to speech is, and `send_card` when picture cards are (`src/cards/`). Every tool acts only for the person in the conversation.
 
 ## Design choices, and why
 

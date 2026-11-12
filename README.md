@@ -23,15 +23,27 @@ Don't want to run phones yourself? If you don't want to pay $167/month with rest
 | [Phone tweak](ios/tweak/) | Optional add-on on each iPhone: photos, native voice notes, reactions, app cards. The riskiest layer; test on a spare phone. | Ran on every production line. This copy has new names and settings and has not been compiled from this repo yet |
 | [GamePigeon games](games/) | Plays Word Hunt and eleven more GamePigeon games with customers on iPhone lines. | Ported from production, unit tested |
 | Groups and media | Group chats, photos in, voice-note replies, reactions, typing dots, contact card. | Ported from production, unit tested |
+| [Picture cards](src/cards/) | Bookings, reminders, confirm-before-I-book and web task results, sent as designed cards. The production card designs. | Designs from production, drawn and unit tested here |
 | [Line watchdog](src/ops/line-watchdog.ts) | Alerts you when a line goes down. Alert only, on purpose. | Working, unit tested |
 
-What is **not** in this release is listed honestly in [docs/CHANNELS.md](docs/CHANNELS.md#not-in-this-release): transcribing voice notes people send, custom app card designs, the 8 Ball and Mini Golf engines, the full production browser agent, and an auto-healing watchdog.
+What is **not** in this release is listed honestly in [docs/CHANNELS.md](docs/CHANNELS.md#not-in-this-release): transcribing voice notes people send, tappable native app cards (they need your own App Store app), the 8 Ball and Mini Golf engines, the full production browser agent, and an auto-healing watchdog.
+
+### Picture cards
+
+The agent can send a designed card instead of a wall of text. These are sample cards, drawn by `npm run cards:preview`:
+
+<p>
+<img src="docs/images/card-booking.png" width="49%" alt="Bookings card">
+<img src="docs/images/card-confirm.png" width="49%" alt="Confirm card">
+<img src="docs/images/card-reminders.png" width="49%" alt="Reminders card">
+<img src="docs/images/card-result.png" width="36%" alt="Web task result card">
+</p>
 
 ## What's in each folder
 
 | Folder or file | What it is |
 |---|---|
-| `src/` | The agent server: receives messages on every channel, runs the AI with its tools, sends replies |
+| `src/` | The agent server: receives messages on every channel, runs the AI with its tools, sends replies. `src/cards/` holds the picture cards |
 | `bridges/` | iMessage and SMS bridges: `mac/` for the Mac mini's own line, `phone/` for each jailbroken iPhone line |
 | `worker/` | The browser worker: does web tasks for customers in real Chrome |
 | `ios/` | Files that go on the iPhones: SMServer's launch daemon, its memory-limit launcher, and the phone tweak (`ios/tweak/`) |
@@ -110,6 +122,7 @@ Text the Mac's number from another phone. Full setup, including running everythi
 | `npm run worker` | Browser worker |
 | `npm run watchdog` | Line watchdog (alerts) |
 | `npm run games` | GamePigeon games on iPhone lines |
+| `npm run cards:preview` | Draws every picture card with sample data into `data/card-previews/` |
 | `npm run check` | Typecheck, tests, and the secret/PII scan. Run before every commit. |
 
 Everything is TypeScript run directly by Node (type stripping), so there is no build step. `npm run typecheck` runs `tsc --noEmit`.

@@ -67,6 +67,23 @@ A group is its own conversation: the agent replies in the group, never in a memb
 - **Typing dots** show while the agent writes. iPhone lines use SMServer; the Mac line needs `MAC_TYPING=1` and an `imsg` build with typing.
 - **Contact card:** with `SEND_CONTACT_CARD=1` a new person gets your business card after the first reply.
 
+## Picture cards
+
+With `CARDS=1` the agent can send a designed card on iMessage lines. These are the production card designs (`src/cards/`), drawn by headless Google Chrome and sent as a picture, so every customer sees them:
+
+| Card | When | Where the data comes from |
+|---|---|---|
+| Bookings | "when is my appointment?" | The person's own bookings in the database |
+| Reminders | "what did I ask you to remind me about?" | The person's own reminders in the database |
+| Confirm | Before the agent books, cancels or changes something | The agent writes it: a title, the details, and what to reply |
+| Web task result | A web task found a short list (stores, products, times) | The browser worker, checked and capped by the server |
+
+The agent sends at most one card per reply, always after its words, so a card that fails to draw costs nothing. Cards about a person's bookings and reminders are built from the database, never from the model's text, so a card cannot show a booking that does not exist. Text on a card is escaped and the page that draws it runs no scripts and loads nothing.
+
+Set `CARD_THEME=dark` for the black iMessage look; light is the default. See every card with sample data: `npm run cards:preview`.
+
+**Tappable native cards** (the kind that open inside Messages) only show for people who have installed your own iPhone app with an iMessage extension; everyone else gets an empty bubble. Production proved this on real phones. The bridges and phone tweak can send them (`/send-card`), but the app is yours to build, so this release sends pictures.
+
 On iPhone lines, photos and voice notes go out through the phone tweak ([ios/tweak/README.md](../ios/tweak/README.md)), because SMServer silently drops files on rootless jailbreaks. Without the tweak, an iPhone line is text only.
 
 ## GamePigeon games
@@ -75,7 +92,7 @@ iPhone lines with the phone tweak can play GamePigeon with your customers: Word 
 
 ## Status of all of the above
 
-Group chats, photos, voice notes, typing, reactions, the contact card, the phone tweak and the games were ported from production and are unit tested here, but have **not yet been run in this repository against a real phone or Mac**. Test on a spare line before customers use it.
+Group chats, photos, voice notes, typing, reactions, the contact card, picture cards, the phone tweak and the games were ported from production and are unit tested here, but have **not yet been run in this repository against a real phone or Mac**. Test on a spare line before customers use it.
 
 ## Not in this release
 
@@ -83,7 +100,7 @@ Honest list of what the production system did that this repository does not, yet
 
 - **Voice notes people send** are not transcribed; the agent is told one arrived.
 - **Read receipts**, and the agent sending its own tapbacks (the bridges support `/tapback`; the agent has no tool for it yet).
-- **Custom native app cards.** The bridges and tweak can send them (`/send-card`), but the card designs were product specific and are not included, and the agent has no card tool.
+- **Tappable native app cards.** The bridges and tweak can send them (`/send-card`), but they only show for people who installed your own iPhone app, so the agent sends picture cards instead (see Picture cards above). Production's personal tracker cards (calories, workouts, sleep and the rest) belong to a different product and are not included.
 - **8 Ball and Mini Golf engines.** They are compiled from AGPL source that was not available to publish with them, so they are not shipped; see games/README.md to build them.
 - **Production's extra group features:** learned nicknames, polls and bookings in groups.
 - **The full production browser agent** (saved logins, purchases, documents, the Chrome extension). The worker here is a smaller rebuild.
