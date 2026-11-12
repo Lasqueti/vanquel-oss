@@ -15,6 +15,7 @@
     "worker": "node worker/browser-worker.ts",
     "watchdog": "node src/ops/line-watchdog.ts",
     "games": "node games/watcher.ts",
+    "cards:preview": "node scripts/preview-cards.ts",
     "typecheck": "tsc --noEmit",
     "test": "node --test --test-reporter=spec \"tests/**/*.test.ts\"",
     "scan": "node scripts/scan-secrets.ts",
