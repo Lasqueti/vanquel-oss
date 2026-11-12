@@ -1,0 +1,9 @@
+Package: com.example.vanquel.tweak
+Name: VanquelTweak
+Version: 1.0.0
+Architecture: iphoneos-arm64
+Description: Native cards, photos, voice notes, tapbacks and sms.db reads for an SMServer iPhone line (SpringBoard, :8799).
+Maintainer: Vanquel OSS
+Author: Vanquel OSS
+Section: Tweaks
+Depends: mobilesubstrate

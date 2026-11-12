@@ -1,0 +1,8 @@
+Package: com.example.vanquel.imcap
+Name: Vanquel IMCap
+Version: 1.0.0
+Architecture: iphoneos-arm64
+Description: iMessage capability unlock and typing bridge for an SMServer line (iOS 16)
+Maintainer: Vanquel OSS
+Author: Vanquel OSS
+Section: Tweaks

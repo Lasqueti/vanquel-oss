@@ -1,0 +1,8 @@
+Package: com.example.vanquel.taskguard
+Name: Vanquel Task Guard
+Version: 1.0.0
+Architecture: iphoneos-arm64
+Description: Stops SMServer's running check from crashing SpringBoard
+Maintainer: Vanquel OSS
+Author: Vanquel OSS
+Section: Tweaks
