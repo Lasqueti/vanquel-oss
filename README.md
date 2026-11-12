@@ -20,7 +20,7 @@ Don't want to run phones yourself? If you don't want to pay $167/month with rest
 | [Email](src/channels/email-postmark.ts) | The agent's own mailbox through Postmark. | **New, not run against live Postmark yet** |
 | [Slack](src/channels/slack.ts) | Customers DM the agent; teammates take over handoffs in a thread. | **New, not run against live Slack yet** |
 | [Twilio SMS](src/channels/sms-twilio.ts) | Optional. Not needed for SMS (the iPhone lines do it); only for a separate SMS-only number. | **New, not run against live Twilio yet** |
-| [Phone tweak](ios/tweak/) | Optional add-on on each iPhone: photos, native voice notes, reactions, app cards. The riskiest layer; test on a spare phone. | Ported from production, not yet built or run from this repo |
+| [Phone tweak](ios/tweak/) | Optional add-on on each iPhone: photos, native voice notes, reactions, app cards. The riskiest layer; test on a spare phone. | Ran on every production line. This copy has new names and settings and has not been compiled from this repo yet |
 | [GamePigeon games](games/) | Plays Word Hunt and eleven more GamePigeon games with customers on iPhone lines. | Ported from production, unit tested |
 | Groups and media | Group chats, photos in, voice-note replies, reactions, typing dots, contact card. | Ported from production, unit tested |
 | [Line watchdog](src/ops/line-watchdog.ts) | Alerts you when a line goes down. Alert only, on purpose. | Working, unit tested |
