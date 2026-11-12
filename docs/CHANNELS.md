@@ -49,15 +49,43 @@ Create a Slack app with a bot user.
 
 **Handoff console.** When the agent hands a conversation to a person, a thread opens in the operator channel with who it is and why. Every new customer message lands in that thread. Anything a teammate writes in the thread is sent to the customer (on whatever channel they used). Writing `done` hands the conversation back to the agent.
 
+## Group chats
+
+A group is its own conversation: the agent replies in the group, never in a member's private chat, and it does not mix what it knows from private chats into the group.
+
+- It speaks when someone uses its name (`AGENT_NAME`), or answers a question it just asked. Otherwise it stays quiet. "Everyone" or "you guys" does not count.
+- The model can also decide to say nothing (it answers `NO_REPLY`).
+- In a group it only talks: no bookings, reminders or web tasks. It offers to help one on one instead.
+- SMS, MMS and RCS groups (any member on green bubbles) are left quietly and never answered, as in production.
+- STOP in a group opts that group out.
+
+## Photos, voice notes, reactions, typing
+
+- **Photos people send** reach the agent. With `LLM_VISION=1` the model sees the image; otherwise it is told a photo arrived. Other files become a short note.
+- **Voice-note replies:** set `TTS_MODEL` and the agent can answer a short message as a native voice note (text to speech, converted on the Mac, sent as a real waveform bubble). Anything long or full of links stays text.
+- **Reactions** (tapbacks) are kept as context and never trigger a reply.
+- **Typing dots** show while the agent writes. iPhone lines use SMServer; the Mac line needs `MAC_TYPING=1` and an `imsg` build with typing.
+- **Contact card:** with `SEND_CONTACT_CARD=1` a new person gets your business card after the first reply.
+
+On iPhone lines, photos and voice notes go out through the phone tweak ([ios/tweak/README.md](../ios/tweak/README.md)), because SMServer silently drops files on rootless jailbreaks. Without the tweak, an iPhone line is text only.
+
+## GamePigeon games
+
+iPhone lines with the phone tweak can play GamePigeon with your customers: Word Hunt on by default, eleven more games switchable one by one. A separate process (`npm run games`) does it. See [games/README.md](../games/README.md).
+
+## Status of all of the above
+
+Group chats, photos, voice notes, typing, reactions, the contact card, the phone tweak and the games were ported from production and are unit tested here, but have **not yet been run in this repository against a real phone or Mac**. Test on a spare line before customers use it.
+
 ## Not in this release
 
 Honest list of what the production system did that this repository does not, yet:
 
-- **Group chats.** Group messages are received but never answered (`ignored-group`).
-- **Photos, files and voice notes,** in or out. Text only.
-- **Tapbacks** (reactions) are ignored.
-- **Typing indicators and read receipts.**
-- **Native iMessage app cards and GamePigeon games.** These needed custom on-device tweaks that are risky to run; they are not included.
-- **Contact card on first message.**
-- **Auto-healing watchdog.** Alert only, on purpose; see [OPERATIONS.md](OPERATIONS.md#why-the-watchdog-only-alerts).
+- **Voice notes people send** are not transcribed; the agent is told one arrived.
+- **Read receipts**, and the agent sending its own tapbacks (the bridges support `/tapback`; the agent has no tool for it yet).
+- **Custom native app cards.** The bridges and tweak can send them (`/send-card`), but the card designs were product specific and are not included, and the agent has no card tool.
+- **8 Ball and Mini Golf engines.** They are compiled from AGPL source that was not available to publish with them, so they are not shipped; see games/README.md to build them.
+- **Production's extra group features:** learned nicknames, polls and bookings in groups.
+- **The full production browser agent** (saved logins, purchases, documents, the Chrome extension). The worker here is a smaller rebuild.
 - **Acting in a customer's own Gmail or calendar.**
+- **Auto-healing watchdog.** Alert only, on purpose; see [OPERATIONS.md](OPERATIONS.md#why-the-watchdog-only-alerts).

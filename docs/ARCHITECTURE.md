@@ -9,6 +9,8 @@ Everything runs on one Mac mini as a handful of small Node processes. They talk 
 | iPhone line bridge, one per phone | `bridges/phone/bridge.ts` | `127.0.0.1:32xx` | One jailbroken iPhone running SMServer |
 | Browser worker | `worker/browser-worker.ts` | `127.0.0.1:3105` | Web tasks in real Chrome |
 | Line watchdog | `src/ops/line-watchdog.ts` | none | Alerts when a line stops answering |
+| Games watcher | `games/watcher.ts` | none | Plays GamePigeon moves on iPhone lines |
+| Phone tweak, on each iPhone | `ios/tweak/` | phone `:8799` | Photos, voice notes, reactions, cards, game moves |
 
 Only the agent server needs to be reachable from the internet, and only if you use email, Slack or Twilio (their webhooks). Put a tunnel or HTTPS reverse proxy in front of `/channels/*` only.
 

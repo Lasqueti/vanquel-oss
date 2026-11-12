@@ -93,6 +93,10 @@ curl -m 6 -s "http://PHONE_IP:8741/requests?chats=5"            # a JSON list of
 
 The last check matters: an empty chat list with a healthy server is the Dopamine sandbox problem above.
 
+## Optional: the phone tweak
+
+SMServer handles text. Photos, native voice notes, reactions, app cards and GamePigeon games need a second add-on on the phone, the tweak in [ios/tweak/](../ios/tweak/README.md). It is the riskiest part of the stack (a bad build crashed phones during production rollout), so install it on a spare phone first and follow its README exactly. Without it, a line is text only.
+
 ## Connecting a line
 
 1. Copy `lines/example.env` to `lines/phone1.env` (any line id), fill in the phone's address, SMServer password and a unique bridge port, and `chmod 600` it.
