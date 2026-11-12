@@ -1,8 +1,12 @@
 // bridges/forward.ts
-// Hands one inbound text to the agent server. Shared by both bridges.
+// Hands one inbound message to the agent server. Shared by both bridges.
+// text may be empty when the message is only attachments. In a group, from is
+// the person who sent it and chat is the group's chat id.
 //   'ok'      the server took it (or already had it: it dedupes by guid)
 //   'refused' the server will never take it (4xx other than 401/408/429): skip it
 //   'retry'   nothing listening, a 5xx, a timeout, or a bad key: keep it, try later
+
+import type { InboundAttachment } from './attachments.ts';
 
 export type ForwardResult = 'ok' | 'refused' | 'retry';
 
@@ -13,6 +17,10 @@ export interface InboundPayload {
     guid: string;
     isGroup: boolean;
     service?: string;
+    chat?: string;
+    attachments?: InboundAttachment[];
+    // An inline reply (long-press, Reply): the bubble it answers.
+    replyTo?: { guid: string; text: string; isFromMe: boolean };
 }
 
 export function createForwarder(serverUrl: string, bridgeKey: string, fetchImpl: typeof fetch = fetch) {

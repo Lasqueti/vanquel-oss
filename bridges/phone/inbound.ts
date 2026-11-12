@@ -12,6 +12,10 @@
 // minute (sms.db dates are the sender's clock, so a late text can leave the
 // marker unchanged). Reading every chat every poll costs the phone real CPU.
 //
+// GROUPS. A group's rows carry their sender in `id`; the chat is the group.
+// FILES. A row's `attachments` are paths relative to the phone's SMS folder;
+// the bridge turns each into a link to its own /attachment route.
+//
 // FAILURES stay with their chat: if the server cannot take a text, that chat
 // stops for this pass and tries again next pass; other chats carry on.
 
@@ -39,13 +43,29 @@ export function pendingRows(state: InboundState, chat: string, rows: SmsRow[]): 
         .sort((a, b) => asRowId(a.ROWID) - asRowId(b.ROWID));
 }
 
-// A plain text from a person: not ours, not a system row, not a tapback or app card.
+// Files on a row, as SMServer lists them: [{filename: "Attachments/...", mime_type}].
+export function rowAttachments(row: SmsRow): Array<{ path: string; mimeType: string }> {
+    if (!Array.isArray(row.attachments)) return [];
+    return row.attachments
+        .filter((item): item is SmsRow => Boolean(item) && typeof item === 'object' && !Array.isArray(item))
+        .map((item) => ({ path: String(item.filename ?? '').trim(), mimeType: String(item.mime_type ?? '') }))
+        .filter((item) => item.path !== '');
+}
+
+// What a person sent: not ours, not a system row, not a tapback or app card.
+// Words, files, or both.
 export function isForwardable(row: SmsRow): boolean {
     const type = row.item_type;
     const systemRow = !(type == null || type === '' || type === 0 || type === '0');
     const appCard = typeof row.balloon_bundle_id === 'string' && row.balloon_bundle_id !== '';
     const tapback = asRowId(row.associated_message_type) !== 0;
-    return !isFromMe(row) && !systemRow && !appCard && !tapback && typeof row.text === 'string' && row.text.trim() !== '';
+    const hasText = typeof row.text === 'string' && row.text.replace(/\uFFFC/g, '').trim() !== '';
+    return !isFromMe(row) && !systemRow && !appCard && !tapback && (hasText || rowAttachments(row).length > 0);
+}
+
+// Who sent a row: its own handle in a group, the chat itself one-to-one.
+export function senderOf(chat: string, row: SmsRow): string {
+    return String(row.id ?? '').trim() || chat;
 }
 
 export function settle(state: InboundState, chat: string, row: SmsRow): void {
@@ -62,4 +82,10 @@ export function chatsToRead(state: InboundState, listed: Array<{ chat: string; m
 // SMServer are "chat<digits>" ids.
 export function isGroupChat(chat: string): boolean {
     return /^chat\d+/.test(chat);
+}
+
+// A path the /attachment proxy may fetch: inside Attachments/ under the
+// phone's SMS folder, relative, with no way back out.
+export function isPhoneAttachmentPath(path: string): boolean {
+    return path.startsWith('Attachments/') && !path.split('/').includes('..') && !/[\\\x00]/.test(path);
 }
