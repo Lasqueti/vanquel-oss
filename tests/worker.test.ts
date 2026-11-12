@@ -65,6 +65,11 @@ test('the loop browses and finishes with a summary', async () => {
     assert.deepEqual(page.log, ['goto https://shop.example.com', 'click 1']);
 });
 
+test('a done with a list carries it back for a result card', async () => {
+    const result = await loop(fakePage([hours]), ['{"action":"done","summary":"Two found.","title":"Late stores","items":[{"name":"Corner Hardware","detail":"until 9 PM"}]}']);
+    assert.deepEqual(result.found, { title: 'Late stores', items: [{ name: 'Corner Hardware', detail: 'until 9 PM' }] });
+});
+
 test('the loop stops before spending money or typing a password', async () => {
     const buy = await loop(fakePage([shop]), ['{"action":"click","ref":2}']);
     assert.equal(buy.status, 'needs_human');
