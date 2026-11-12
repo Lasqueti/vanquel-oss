@@ -20,9 +20,12 @@ Don't want to run phones yourself? If you don't want to pay $167/month with rest
 | [Email](src/channels/email-postmark.ts) | The agent's own mailbox through Postmark. | **New, not run against live Postmark yet** |
 | [Slack](src/channels/slack.ts) | Customers DM the agent; teammates take over handoffs in a thread. | **New, not run against live Slack yet** |
 | [Twilio SMS](src/channels/sms-twilio.ts) | Optional. Not needed for SMS (the iPhone lines do it); only for a separate SMS-only number. | **New, not run against live Twilio yet** |
+| [Phone tweak](ios/tweak/) | Optional add-on on each iPhone: photos, native voice notes, reactions, app cards. The riskiest layer; test on a spare phone. | Ported from production, not yet built or run from this repo |
+| [GamePigeon games](games/) | Plays Word Hunt and eleven more GamePigeon games with customers on iPhone lines. | Ported from production, unit tested |
+| Groups and media | Group chats, photos in, voice-note replies, reactions, typing dots, contact card. | Ported from production, unit tested |
 | [Line watchdog](src/ops/line-watchdog.ts) | Alerts you when a line goes down. Alert only, on purpose. | Working, unit tested |
 
-What is **not** in this release is listed honestly in [docs/CHANNELS.md](docs/CHANNELS.md#not-in-this-release): group chats, photos and voice notes, typing indicators, native iMessage app cards and games, and an auto-healing watchdog.
+What is **not** in this release is listed honestly in [docs/CHANNELS.md](docs/CHANNELS.md#not-in-this-release): transcribing voice notes people send, custom app card designs, the 8 Ball and Mini Golf engines, the full production browser agent, and an auto-healing watchdog.
 
 ## What's in each folder
 
@@ -31,7 +34,8 @@ What is **not** in this release is listed honestly in [docs/CHANNELS.md](docs/CH
 | `src/` | The agent server: receives messages on every channel, runs the AI with its tools, sends replies |
 | `bridges/` | iMessage and SMS bridges: `mac/` for the Mac mini's own line, `phone/` for each jailbroken iPhone line |
 | `worker/` | The browser worker: does web tasks for customers in real Chrome |
-| `ios/` | Files that go on the iPhones: SMServer's launch daemon and its memory-limit launcher |
+| `ios/` | Files that go on the iPhones: SMServer's launch daemon, its memory-limit launcher, and the phone tweak (`ios/tweak/`) |
+| `games/` | GamePigeon auto-play: game solvers and the watcher process |
 | `lines/` | Settings template for one iPhone line |
 | `scripts/` | Phone health check and recovery helpers, and the secret and privacy scanner |
 | `tests/` | Automated tests (`npm test`) |
@@ -105,6 +109,7 @@ Text the Mac's number from another phone. Full setup, including running everythi
 | `npm run bridge:phone -- lines/phone1.env` | One iPhone line bridge |
 | `npm run worker` | Browser worker |
 | `npm run watchdog` | Line watchdog (alerts) |
+| `npm run games` | GamePigeon games on iPhone lines |
 | `npm run check` | Typecheck, tests, and the secret/PII scan. Run before every commit. |
 
 Everything is TypeScript run directly by Node (type stripping), so there is no build step. `npm run typecheck` runs `tsc --noEmit`.
