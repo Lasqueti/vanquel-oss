@@ -1,8 +1,10 @@
 // src/store.ts
 // Everything the agent server remembers, in one SQLite file (node:sqlite, no
 // native build step). Tables:
-//   contacts   one row per person per channel: opt-out, handoff, last line
-//   messages   the conversation log the agent reads its history from
+//   contacts   one row per conversation per channel: opt-out, handoff, last
+//              line. An iMessage group chat is one row, keyed by its chat id.
+//   messages   the conversation log the agent reads its history from; group
+//              messages keep who wrote them, and any attachments ride along
 //   seen       inbound message ids already handled (bridges retry, so dedupe)
 //   reminders  texts the agent promised to send later
 //   slots      bookable appointment slots the operator publishes
@@ -11,7 +13,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import type { Address, ChannelId } from './channels/types.ts';
+import type { Address, Attachment, ChannelId } from './channels/types.ts';
 
 export interface Contact {
     channel: ChannelId;
@@ -22,12 +24,18 @@ export interface Contact {
     handoffSince: string | null;
     handoffReason: string | null;
     operatorThread: string | null;
+    isGroup: boolean;
+    // Set when the agent left a group chat for good ('sms').
+    leftReason: string | null;
 }
 
 export interface StoredMessage {
     direction: 'in' | 'out' | 'operator';
     text: string;
     createdAt: string;
+    // Group chats: the member who wrote an inbound message.
+    sender: string | null;
+    attachments: Attachment[];
 }
 
 export interface Reminder {
@@ -67,6 +75,8 @@ CREATE TABLE IF NOT EXISTS contacts (
     handoff_reason TEXT,
     operator_thread TEXT,
     first_seen TEXT NOT NULL,
+    is_group INTEGER NOT NULL DEFAULT 0,
+    left_reason TEXT,
     PRIMARY KEY (channel, handle)
 );
 CREATE TABLE IF NOT EXISTS messages (
@@ -75,7 +85,9 @@ CREATE TABLE IF NOT EXISTS messages (
     handle TEXT NOT NULL,
     direction TEXT NOT NULL,
     text TEXT NOT NULL,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    sender TEXT,
+    attachments TEXT
 );
 CREATE INDEX IF NOT EXISTS messages_by_contact ON messages (channel, handle, id);
 CREATE TABLE IF NOT EXISTS seen (
@@ -114,6 +126,14 @@ CREATE TABLE IF NOT EXISTS browse (
 );
 `;
 
+// Columns added after the first release, so an existing database file keeps working.
+const ADDED_COLUMNS: Array<[table: string, column: string, definition: string]> = [
+    ['contacts', 'is_group', 'INTEGER NOT NULL DEFAULT 0'],
+    ['contacts', 'left_reason', 'TEXT'],
+    ['messages', 'sender', 'TEXT'],
+    ['messages', 'attachments', 'TEXT'],
+];
+
 type Row = Record<string, unknown>;
 
 function toContact(row: Row): Contact {
@@ -126,7 +146,18 @@ function toContact(row: Row): Contact {
         handoffSince: (row.handoff_since as string | null) ?? null,
         handoffReason: (row.handoff_reason as string | null) ?? null,
         operatorThread: (row.operator_thread as string | null) ?? null,
+        isGroup: Number(row.is_group) === 1,
+        leftReason: (row.left_reason as string | null) ?? null,
     };
+}
+
+function toAttachments(value: unknown): Attachment[] {
+    if (typeof value !== 'string' || !value) return [];
+    try {
+        return JSON.parse(value) as Attachment[];
+    } catch {
+        return [];
+    }
 }
 
 export function openStore(path: string, now: () => Date = () => new Date()) {
@@ -134,6 +165,10 @@ export function openStore(path: string, now: () => Date = () => new Date()) {
     const db = new DatabaseSync(path);
     db.exec('PRAGMA journal_mode = WAL;');
     db.exec(SCHEMA);
+    for (const [table, column, definition] of ADDED_COLUMNS) {
+        const columns = db.prepare(`PRAGMA table_info(${table})`).all() as Row[];
+        if (!columns.some((c) => c.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+    }
     const iso = () => now().toISOString();
 
     return {
@@ -148,11 +183,12 @@ export function openStore(path: string, now: () => Date = () => new Date()) {
 
         // ---- contacts ----
         touchContact(address: Address): Contact {
-            db.prepare(`INSERT INTO contacts (channel, handle, line, thread, first_seen) VALUES (?, ?, ?, ?, ?)
+            db.prepare(`INSERT INTO contacts (channel, handle, line, thread, first_seen, is_group) VALUES (?, ?, ?, ?, ?, ?)
                 ON CONFLICT (channel, handle) DO UPDATE SET
                     line = COALESCE(excluded.line, contacts.line),
-                    thread = COALESCE(excluded.thread, contacts.thread)`)
-                .run(address.channel, address.handle, address.line ?? null, address.thread ?? null, iso());
+                    thread = COALESCE(excluded.thread, contacts.thread),
+                    is_group = MAX(contacts.is_group, excluded.is_group)`)
+                .run(address.channel, address.handle, address.line ?? null, address.thread ?? null, iso(), address.group ? 1 : 0);
             return this.getContact(address.channel, address.handle)!;
         },
         getContact(channel: ChannelId, handle: string): Contact | null {
@@ -172,17 +208,28 @@ export function openStore(path: string, now: () => Date = () => new Date()) {
         setOperatorThread(channel: ChannelId, handle: string, threadRef: string): void {
             db.prepare('UPDATE contacts SET operator_thread = ? WHERE channel = ? AND handle = ?').run(threadRef, channel, handle);
         },
+        leaveGroup(channel: ChannelId, handle: string, reason: string): void {
+            db.prepare('UPDATE contacts SET left_reason = ? WHERE channel = ? AND handle = ? AND is_group = 1').run(reason, channel, handle);
+        },
         endHandoff(channel: ChannelId, handle: string): void {
             db.prepare('UPDATE contacts SET handoff_since = NULL, handoff_reason = NULL, operator_thread = NULL WHERE channel = ? AND handle = ?').run(channel, handle);
         },
 
         // ---- messages ----
-        addMessage(channel: ChannelId, handle: string, direction: StoredMessage['direction'], text: string): void {
-            db.prepare('INSERT INTO messages (channel, handle, direction, text, created_at) VALUES (?, ?, ?, ?, ?)').run(channel, handle, direction, text, iso());
+        addMessage(channel: ChannelId, handle: string, direction: StoredMessage['direction'], text: string, extra: { sender?: string; attachments?: Attachment[] } = {}): void {
+            const attachments = extra.attachments?.length ? JSON.stringify(extra.attachments) : null;
+            db.prepare('INSERT INTO messages (channel, handle, direction, text, created_at, sender, attachments) VALUES (?, ?, ?, ?, ?, ?, ?)')
+                .run(channel, handle, direction, text, iso(), extra.sender ?? null, attachments);
         },
         recentMessages(channel: ChannelId, handle: string, limit: number): StoredMessage[] {
-            const rows = db.prepare('SELECT direction, text, created_at FROM messages WHERE channel = ? AND handle = ? ORDER BY id DESC LIMIT ?').all(channel, handle, limit) as Row[];
-            return rows.reverse().map((row) => ({ direction: row.direction as StoredMessage['direction'], text: String(row.text), createdAt: String(row.created_at) }));
+            const rows = db.prepare('SELECT direction, text, created_at, sender, attachments FROM messages WHERE channel = ? AND handle = ? ORDER BY id DESC LIMIT ?').all(channel, handle, limit) as Row[];
+            return rows.reverse().map((row) => ({
+                direction: row.direction as StoredMessage['direction'],
+                text: String(row.text),
+                createdAt: String(row.created_at),
+                sender: (row.sender as string | null) ?? null,
+                attachments: toAttachments(row.attachments),
+            }));
         },
         outboundSince(channel: ChannelId, handle: string, sinceIso: string): number {
             const row = db.prepare("SELECT COUNT(*) AS n FROM messages WHERE channel = ? AND handle = ? AND direction = 'out' AND created_at >= ?").get(channel, handle, sinceIso) as Row;

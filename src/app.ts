@@ -67,9 +67,23 @@ export function createRoutes(deps: AppDeps): Record<string, Handler> {
             if (!config.bridgeKey || !safeEqual(header(req, 'x-bridge-key'), config.bridgeKey)) throw new HttpError(401, 'bad bridge key');
             const message = parseInboundIMessage(parseJson(req));
             if (!message) throw new HttpError(400, 'line, from and guid are required');
-            // Group chats are out of scope for this release: never answered.
-            if (message.isGroup) return json(200, { result: 'ignored-group' });
-            const result = await pipeline.handleInbound({ address: { channel: 'imessage', handle: message.from, line: message.line }, text: message.text, externalId: message.guid });
+            // A group with no usable chat id cannot be answered in the group, and
+            // answering the sender privately would leak the room into a DM.
+            if (message.isGroup && !message.chat) return json(200, { result: 'ignored-group' });
+            // A group is its own conversation, keyed by the chat id; the member who
+            // wrote is kept per message.
+            const address = message.chat
+                ? { channel: 'imessage' as const, handle: message.chat, line: message.line, group: true }
+                : { channel: 'imessage' as const, handle: message.from, line: message.line };
+            const result = await pipeline.handleInbound({
+                address,
+                // An inline reply (long-press, Reply) says which bubble it answers.
+                text: message.replyTo && message.text ? `[replying to: "${message.replyTo.slice(0, 300)}"] ${message.text}` : message.text,
+                externalId: message.guid,
+                sender: message.chat ? message.from : undefined,
+                attachments: message.attachments,
+                service: message.service,
+            });
             return json(200, { result });
         },
 

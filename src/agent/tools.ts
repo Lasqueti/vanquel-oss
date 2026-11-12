@@ -24,6 +24,8 @@ export interface ToolContext {
     operator: Operator;
     browse?: BrowseClient;
     lastUserText: string;
+    // How this turn's reply goes out. A tool may change it.
+    turn?: { voiceNote: boolean };
 }
 
 export interface Tool {
@@ -136,8 +138,17 @@ const browseWeb = tool('browse_web', 'Start a web task in a real browser (look s
     return 'Web task started. Tell the person you are on it and will text the result.';
 });
 
-export function buildTools(options: { browse: boolean }): Tool[] {
+// Only offered when text-to-speech is configured (src/agent/voice-note.ts).
+const voiceNote = tool('reply_with_voice_note', 'Send your next reply as a spoken voice message instead of text. Use it only when the person asks for a voice message or audio. Keep that reply short and plain, with no links or lists.', {}, [], async (_args, ctx) => {
+    if (ctx.address.channel !== 'imessage') return 'Error: voice messages only work over iMessage. Reply in text.';
+    if (!ctx.turn) return 'Error: voice messages are not available right now. Reply in text.';
+    ctx.turn.voiceNote = true;
+    return 'Your next reply will be sent as a voice message. Write it as you would say it.';
+});
+
+export function buildTools(options: { browse: boolean; voice?: boolean }): Tool[] {
     const tools = [setReminder, listReminders, cancelReminder, listSlots, bookSlot, myBookings, cancelBooking, handoff];
     if (options.browse) tools.push(browseWeb);
+    if (options.voice) tools.push(voiceNote);
     return tools;
 }

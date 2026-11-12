@@ -16,6 +16,9 @@ import { createSlackChannel, createSlackClient } from './channels/slack.ts';
 import { createLlm } from './agent/llm.ts';
 import { buildTools } from './agent/tools.ts';
 import { createPipeline } from './agent/pipeline.ts';
+import { createImageLoader } from './agent/media.ts';
+import { createVoiceNotes } from './agent/voice-note.ts';
+import { writeContactCard } from './agent/contact-card.ts';
 import { createOperator } from './operator.ts';
 import { createAlerter } from './ops/alert.ts';
 import { createReminderRunner } from './reminders.ts';
@@ -55,14 +58,29 @@ const workerUrl = env('BROWSER_WORKER_URL');
 const workerSecret = env('BROWSER_WORKER_SECRET');
 const browse = workerUrl && workerSecret ? createBrowseClient(workerUrl, workerSecret, `http://127.0.0.1:${port}/internal/browse-result`) : undefined;
 
+// ---- media: photos in (LLM_VISION), voice notes out (TTS_MODEL), contact card ----
+const llmBaseUrl = env('LLM_BASE_URL', 'https://api.openai.com/v1');
+const mediaDir = env('MEDIA_DIR', 'data/media');
+const loadImage = envBool('LLM_VISION') ? createImageLoader({ bridgeUrls: Object.values(lines), bridgeKey: env('BRIDGE_KEY') }) : undefined;
+const voiceNotes = env('TTS_MODEL') && Object.keys(lines).length
+    ? createVoiceNotes({ baseUrl: env('TTS_BASE_URL', llmBaseUrl), apiKey: env('TTS_API_KEY', env('LLM_API_KEY')), model: env('TTS_MODEL'), voice: env('TTS_VOICE', 'alloy'), outDir: mediaDir })
+    : undefined;
+let contactCardPath: string | undefined;
+if (envBool('SEND_CONTACT_CARD')) {
+    if (env('CONTACT_PHONE')) contactCardPath = writeContactCard(mediaDir, { name: env('AGENT_NAME', 'Assistant'), org: env('BUSINESS_NAME'), phone: env('CONTACT_PHONE') });
+    else log.warn('SEND_CONTACT_CARD is on but CONTACT_PHONE is empty; not sending contact cards');
+}
+
 const businessInfoFile = env('BUSINESS_INFO_FILE');
 const pipeline = createPipeline({
     store,
     router,
-    llm: createLlm({ baseUrl: env('LLM_BASE_URL', 'https://api.openai.com/v1'), apiKey: requireEnv('LLM_API_KEY'), model: requireEnv('LLM_MODEL') }),
-    tools: buildTools({ browse: Boolean(browse) }),
+    llm: createLlm({ baseUrl: llmBaseUrl, apiKey: requireEnv('LLM_API_KEY'), model: requireEnv('LLM_MODEL') }),
+    tools: buildTools({ browse: Boolean(browse), voice: Boolean(voiceNotes) }),
     operator,
     browse,
+    loadImage,
+    voiceNotes,
     log: createLogger('agent'),
     config: {
         agentName: env('AGENT_NAME', 'Assistant'),
@@ -73,6 +91,7 @@ const pipeline = createPipeline({
         maxRepliesPerHour: envInt('MAX_REPLIES_PER_HOUR', 30),
         debounceMs: envInt('REPLY_DEBOUNCE_MS', 1500),
         maxToolRounds: envInt('MAX_TOOL_ROUNDS', 5),
+        contactCardPath,
     },
 });
 
@@ -95,4 +114,5 @@ const routes = createRoutes({
 const reminders = createReminderRunner(store, router, alert);
 reminders.start(30_000);
 startHttp(routes, port, env('HOST', '127.0.0.1'), (m) => log.error(m));
-log.info(`listening on ${env('HOST', '127.0.0.1')}:${port}; channels: ${channels.map((c) => c.id).join(', ') || 'none'}${browse ? '; browser worker on' : ''}`);
+const extras = [browse && 'browser worker', loadImage && 'vision', voiceNotes && 'voice notes', contactCardPath && 'contact card'].filter(Boolean).join(', ');
+log.info(`listening on ${env('HOST', '127.0.0.1')}:${port}; channels: ${channels.map((c) => c.id).join(', ') || 'none'}${extras ? `; on: ${extras}` : ''}`);

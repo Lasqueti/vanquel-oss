@@ -12,7 +12,18 @@ export interface PromptContext {
     channel: ChannelId;
     now: Date;
     tools: string[];
+    group?: boolean;
 }
+
+// The word that means "stay quiet" in a group chat. The pipeline sends nothing.
+export const NO_REPLY = 'NO_REPLY';
+
+const GROUP_STYLE = [
+    'This is a group chat with several people. Each of their messages starts with a short label for who wrote it.',
+    'You only see this chat. Never mention anything from a private conversation with any member.',
+    'Answer only what was asked of you, in one short message, to the group. You cannot book, set reminders or do tasks in a group chat; offer to help one on one instead.',
+    `If the newest messages are not for you, or you have nothing useful to add, reply with exactly ${NO_REPLY}.`,
+].join(' ');
 
 const CHANNEL_STYLE: Record<ChannelId, string> = {
     imessage: 'You are texting over iMessage. Write like a person texts: short, plain text, no markdown, no bullet lists. Separate distinct thoughts with a blank line; each becomes its own bubble.',
@@ -26,6 +37,7 @@ export function buildSystemPrompt(ctx: PromptContext): string {
     return [
         `You are ${ctx.agentName}, the assistant for ${ctx.businessName}. You talk with customers and help them get things done.`,
         CHANNEL_STYLE[ctx.channel],
+        ...(ctx.group ? [GROUP_STYLE] : []),
         `Current time: ${localTime} (${ctx.timeZone}). When you pass a time to a tool, use ISO 8601 with the UTC offset for that time zone.`,
         '',
         'Rules:',
