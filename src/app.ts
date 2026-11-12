@@ -23,6 +23,8 @@ import type { Pipeline } from './agent/pipeline.ts';
 import type { Store } from './store.ts';
 import type { Logger } from './log.ts';
 import { RELEASE_WORDS } from './operator.ts';
+import type { CardRenderer } from './cards/render.ts';
+import { captionFor, resultCard } from './cards/cards.ts';
 
 export interface AppConfig {
     bridgeKey: string;
@@ -39,6 +41,8 @@ export interface AppDeps {
     pipeline: Pipeline;
     router: Router;
     log: Logger;
+    // CARDS=1: a web task that found a list also sends it as a picture card.
+    cards?: CardRenderer;
     config: AppConfig;
 }
 
@@ -134,12 +138,21 @@ export function createRoutes(deps: AppDeps): Record<string, Handler> {
 
         'POST /internal/browse-result': async (req) => {
             if (!config.workerSecret || !isLoopback(req.remoteAddress) || !safeEqual(header(req, 'x-worker-secret'), config.workerSecret)) throw new HttpError(403, 'forbidden');
-            const body = parseJson<{ id?: string; status?: string; summary?: string }>(req);
+            const body = parseJson<{ id?: string; status?: string; summary?: string; found?: { title?: unknown; items?: unknown } }>(req);
             const task = body.id ? store.getBrowseTask(body.id) : null;
             if (!task) throw new HttpError(404, 'no such task');
             const summary = String(body.summary ?? '').trim().slice(0, 1500) || 'The web task finished without a result.';
             if (store.finishBrowseTask(task.id, String(body.status ?? 'done'), summary)) {
-                await router.send({ channel: task.channel, handle: task.handle }, summary).catch((error: Error) => log.error(`browse result send failed: ${error.message}`));
+                const address = { channel: task.channel, handle: task.handle };
+                await router.send(address, summary).catch((error: Error) => log.error(`browse result send failed: ${error.message}`));
+                const card = deps.cards && task.channel === 'imessage' && body.found ? resultCard({ title: body.found.title || task.goal, items: body.found.items }) : null;
+                if (card) {
+                    try {
+                        await router.sendFile(address, await deps.cards!.render(card), `[card: ${captionFor(card)}]`);
+                    } catch (error) {
+                        log.warn(`result card failed: ${(error as Error).message}`);
+                    }
+                }
             }
             return json(200, { ok: true });
         },

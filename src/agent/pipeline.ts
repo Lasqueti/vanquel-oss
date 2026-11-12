@@ -9,7 +9,8 @@
 //   5. rate limit   at most MAX_REPLIES_PER_HOUR replies per conversation
 //   6. attention    in a group chat, answer only when talked to
 //   7. debounce     people send three texts in a row; wait a beat, answer once
-//   8. respond      typing bubble, model + tools, then send through the router
+//   8. respond      typing bubble, model + tools, then send through the router;
+//                   a picture card (send_card) follows the words
 // Replies for one conversation never overlap: each has one queue. A group
 // chat is one conversation, so four people typing at once get one answer.
 //
@@ -29,6 +30,8 @@ import type { ImageLoader } from './media.ts';
 import { describeAttachment, isImage } from './media.ts';
 import type { VoiceNotes } from './voice-note.ts';
 import { isVoiceable } from './voice-note.ts';
+import type { CardRenderer } from '../cards/render.ts';
+import { captionFor } from '../cards/cards.ts';
 
 export interface PipelineConfig {
     agentName: string;
@@ -53,6 +56,8 @@ export interface PipelineDeps {
     // LLM_VISION: photos reach the model as images. Without it, a "[photo]" note.
     loadImage?: ImageLoader;
     voiceNotes?: VoiceNotes;
+    // CARDS=1: picture cards the model sends with send_card.
+    cards?: CardRenderer;
     log: Logger;
     now?: () => Date;
     config: PipelineConfig;
@@ -163,7 +168,7 @@ export function createPipeline(deps: PipelineDeps) {
         // A handoff can start while a reply waited in the debounce.
         if (!contact || contact.optedOut || contact.handoffSince || contact.leftReason) return;
         void router.typing(address);
-        const turn = { voiceNote: false };
+        const turn: NonNullable<ToolContext['turn']> = { voiceNote: false };
         let text: string;
         try {
             text = await respond(address, contact.isGroup, lastUserText, turn);
@@ -180,6 +185,15 @@ export function createPipeline(deps: PipelineDeps) {
         } catch (error) {
             log.error(`send failed for ${tail(address.handle)} on ${address.channel}: ${(error as Error).message}`);
             return;
+        }
+        // A card the model asked for (send_card) follows the words. If it
+        // cannot be drawn or sent, the words already went, so nothing is lost.
+        if (turn.card && deps.cards) {
+            try {
+                await router.sendFile(address, await deps.cards.render(turn.card), `[card: ${captionFor(turn.card)}]`);
+            } catch (error) {
+                log.warn(`card failed for ${tail(address.handle)}: ${(error as Error).message}`);
+            }
         }
         if (firstReply && store.claim(`contact-card:${address.channel}:${address.handle}`)) {
             await router.sendFile(address, config.contactCardPath!, '[sent our contact card]')

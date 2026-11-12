@@ -5,6 +5,8 @@
 
 import { createHash, randomUUID } from 'node:crypto';
 import type { Address } from '../channels/types.ts';
+import type { Card } from '../cards/cards.ts';
+import { bookingCard, confirmCard, remindersCard } from '../cards/cards.ts';
 import type { Store } from '../store.ts';
 import type { ToolSchema } from './llm.ts';
 
@@ -25,7 +27,7 @@ export interface ToolContext {
     browse?: BrowseClient;
     lastUserText: string;
     // How this turn's reply goes out. A tool may change it.
-    turn?: { voiceNote: boolean };
+    turn?: { voiceNote: boolean; card?: Card };
 }
 
 export interface Tool {
@@ -146,9 +148,29 @@ const voiceNote = tool('reply_with_voice_note', 'Send your next reply as a spoke
     return 'Your next reply will be sent as a voice message. Write it as you would say it.';
 });
 
-export function buildTools(options: { browse: boolean; voice?: boolean }): Tool[] {
+// Only offered when cards are on (CARDS=1, src/cards/). The tool picks and
+// checks the card; the pipeline draws it and sends it after the reply.
+const sendCard = tool('send_card', 'Send a picture card right after your reply. booking: their upcoming appointments. reminders: their upcoming reminders. confirm: before you book, cancel or change something for them, a summary they can say yes to (fill title, details and ask). At most one card per reply, only when it helps. Your reply still says the main point in one short line.', {
+    type: { type: 'string', enum: ['booking', 'reminders', 'confirm'] },
+    title: { type: 'string', description: 'confirm only: a short question, e.g. "Book this?"' },
+    details: { type: 'array', description: 'confirm only: what will happen, as label and value pairs', items: { type: 'object', properties: { label: { type: 'string' }, value: { type: 'string' } }, required: ['label', 'value'], additionalProperties: false } },
+    ask: { type: 'string', description: 'confirm only: what they reply to go ahead, e.g. "Reply YES to book it"' },
+}, ['type'], async (args, ctx) => {
+    if (ctx.address.channel !== 'imessage') return 'Error: cards only go out over iMessage. Answer in words.';
+    if (!ctx.turn) return 'Error: cards are not available right now. Answer in words.';
+    const card = args.type === 'booking' ? bookingCard(ctx.store, ctx.address, ctx.now())
+        : args.type === 'reminders' ? remindersCard(ctx.store, ctx.address)
+        : args.type === 'confirm' ? confirmCard(args)
+        : null;
+    if (!card) return args.type === 'confirm' ? 'Error: a confirm card needs a title and at least one detail.' : `Error: there is nothing to show on a ${String(args.type)} card. Answer in words.`;
+    ctx.turn.card = card;
+    return 'The card will be sent right after your reply. Keep the reply to one short line.';
+});
+
+export function buildTools(options: { browse: boolean; voice?: boolean; cards?: boolean }): Tool[] {
     const tools = [setReminder, listReminders, cancelReminder, listSlots, bookSlot, myBookings, cancelBooking, handoff];
     if (options.browse) tools.push(browseWeb);
     if (options.voice) tools.push(voiceNote);
+    if (options.cards) tools.push(sendCard);
     return tools;
 }

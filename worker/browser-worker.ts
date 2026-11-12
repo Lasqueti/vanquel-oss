@@ -30,6 +30,7 @@ interface Task {
     profile: string;
     status: 'running' | LoopResult['status'];
     summary: string;
+    found?: LoopResult['found'];
     cancelled: boolean;
 }
 
@@ -45,7 +46,7 @@ async function report(callbackUrl: string, task: Task): Promise<void> {
         await fetch(callbackUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-Worker-Secret': secret },
-            body: JSON.stringify({ id: task.id, status: task.status, summary: task.summary }),
+            body: JSON.stringify({ id: task.id, status: task.status, summary: task.summary, found: task.found }),
             signal: AbortSignal.timeout(15_000),
         });
     } catch (error) {
@@ -69,6 +70,7 @@ async function run(task: Task, goal: string, startUrl: string | undefined, callb
         });
         task.status = result.status;
         task.summary = result.summary;
+        task.found = result.found;
         log.info(`task ${task.id} ${result.status} after ${result.steps} steps`);
     } catch (error) {
         task.status = 'failed';

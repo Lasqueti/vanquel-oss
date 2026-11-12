@@ -18,6 +18,7 @@ import { buildTools } from './agent/tools.ts';
 import { createPipeline } from './agent/pipeline.ts';
 import { createImageLoader } from './agent/media.ts';
 import { createVoiceNotes } from './agent/voice-note.ts';
+import { createCardRenderer } from './cards/render.ts';
 import { writeContactCard } from './agent/contact-card.ts';
 import { createOperator } from './operator.ts';
 import { createAlerter } from './ops/alert.ts';
@@ -58,12 +59,16 @@ const workerUrl = env('BROWSER_WORKER_URL');
 const workerSecret = env('BROWSER_WORKER_SECRET');
 const browse = workerUrl && workerSecret ? createBrowseClient(workerUrl, workerSecret, `http://127.0.0.1:${port}/internal/browse-result`) : undefined;
 
-// ---- media: photos in (LLM_VISION), voice notes out (TTS_MODEL), contact card ----
+// ---- media: photos in (LLM_VISION), voice notes out (TTS_MODEL), cards (CARDS), contact card ----
 const llmBaseUrl = env('LLM_BASE_URL', 'https://api.openai.com/v1');
 const mediaDir = env('MEDIA_DIR', 'data/media');
 const loadImage = envBool('LLM_VISION') ? createImageLoader({ bridgeUrls: Object.values(lines), bridgeKey: env('BRIDGE_KEY') }) : undefined;
 const voiceNotes = env('TTS_MODEL') && Object.keys(lines).length
     ? createVoiceNotes({ baseUrl: env('TTS_BASE_URL', llmBaseUrl), apiKey: env('TTS_API_KEY', env('LLM_API_KEY')), model: env('TTS_MODEL'), voice: env('TTS_VOICE', 'alloy'), outDir: mediaDir })
+    : undefined;
+// CARDS=1: picture cards (src/cards/), drawn by headless Chrome. iMessage only.
+const cards = envBool('CARDS') && Object.keys(lines).length
+    ? createCardRenderer({ outDir: mediaDir, theme: env('CARD_THEME') === 'dark' ? 'dark' : 'light', timeZone: env('TIMEZONE', 'UTC'), executablePath: env('CHROME_PATH') || undefined })
     : undefined;
 let contactCardPath: string | undefined;
 if (envBool('SEND_CONTACT_CARD')) {
@@ -76,11 +81,12 @@ const pipeline = createPipeline({
     store,
     router,
     llm: createLlm({ baseUrl: llmBaseUrl, apiKey: requireEnv('LLM_API_KEY'), model: requireEnv('LLM_MODEL') }),
-    tools: buildTools({ browse: Boolean(browse), voice: Boolean(voiceNotes) }),
+    tools: buildTools({ browse: Boolean(browse), voice: Boolean(voiceNotes), cards: Boolean(cards) }),
     operator,
     browse,
     loadImage,
     voiceNotes,
+    cards,
     log: createLogger('agent'),
     config: {
         agentName: env('AGENT_NAME', 'Assistant'),
@@ -100,6 +106,7 @@ const routes = createRoutes({
     pipeline,
     router,
     log,
+    cards,
     config: {
         bridgeKey: env('BRIDGE_KEY'),
         adminToken: env('ADMIN_TOKEN'),
@@ -114,5 +121,5 @@ const routes = createRoutes({
 const reminders = createReminderRunner(store, router, alert);
 reminders.start(30_000);
 startHttp(routes, port, env('HOST', '127.0.0.1'), (m) => log.error(m));
-const extras = [browse && 'browser worker', loadImage && 'vision', voiceNotes && 'voice notes', contactCardPath && 'contact card'].filter(Boolean).join(', ');
+const extras = [browse && 'browser worker', loadImage && 'vision', voiceNotes && 'voice notes', cards && 'cards', contactCardPath && 'contact card'].filter(Boolean).join(', ');
 log.info(`listening on ${env('HOST', '127.0.0.1')}:${port}; channels: ${channels.map((c) => c.id).join(', ') || 'none'}${extras ? `; on: ${extras}` : ''}`);

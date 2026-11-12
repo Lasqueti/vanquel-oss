@@ -40,6 +40,9 @@ export interface LoopResult {
     status: 'done' | 'needs_human' | 'gave_up' | 'cancelled' | 'failed';
     summary: string;
     steps: number;
+    // A list worth showing as a picture card (src/cards/): stores, products,
+    // opening times. The agent server checks and caps it.
+    found?: { title: string; items: Array<{ name: string; detail?: string; price?: string }> };
 }
 
 export interface LoopOptions {
@@ -63,6 +66,8 @@ type Action = {
     direction?: string;
     summary?: string;
     reason?: string;
+    title?: string;
+    items?: Array<{ name: string; detail?: string; price?: string }>;
 };
 
 const SYSTEM = `You operate a web browser to complete one task for a customer of a small business.
@@ -76,6 +81,7 @@ Answer with ONE JSON object and nothing else. Allowed actions:
 {"action":"scroll","direction":"down"}
 {"action":"back"}
 {"action":"done","summary":"what you found or did, in 1-3 plain sentences for a text message"}
+When the answer is a short list (places, products, times), you may add to done: "title":"a few words","items":[{"name":"...","detail":"...","price":"..."}] with at most 8 items, copied from the page.
 {"action":"needs_human","reason":"why a person must take over"}
 Rules: never enter passwords, payment details or one-time codes; never buy, pay or subscribe; if the task needs any of that, use needs_human.
 Prefer reading over clicking. Finish as soon as you have the answer.`;
@@ -133,7 +139,12 @@ export async function runLoop(options: LoopOptions): Promise<LoopResult> {
         try {
             switch (action.action) {
                 case 'done':
-                    return { status: 'done', summary: String(action.summary ?? '').trim() || 'Done.', steps: step };
+                    return {
+                        status: 'done',
+                        summary: String(action.summary ?? '').trim() || 'Done.',
+                        steps: step,
+                        ...(Array.isArray(action.items) && action.items.length ? { found: { title: String(action.title ?? ''), items: action.items } } : {}),
+                    };
                 case 'needs_human':
                     return { status: 'needs_human', summary: String(action.reason ?? 'A person needs to take over.'), steps: step };
                 case 'goto':
