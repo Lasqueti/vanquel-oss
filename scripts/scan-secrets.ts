@@ -19,7 +19,7 @@ export interface Finding {
 
 const SKIP_DIRS = new Set(['node_modules', '.git', 'data']);
 const SKIP_FILES = new Set(['package-lock.json']);
-const TEXT_EXT = /\.(ts|js|json|md|txt|sh|c|env|example|yml|yaml|plist|html|css)$|^\.[a-z]+$|^[A-Z]+$/i;
+const TEXT_EXT = /\.(ts|js|json|md|txt|sh|c|h|m|mm|swift|entitlements|control|cfg|env|example|yml|yaml|plist|html|css)$|^\.[a-z]+$|^[A-Z]+$/i;
 
 const ALLOWED_IPS = new Set(['127.0.0.1', '0.0.0.0', '10.0.0.5', '192.168.1.1', '169.254.169.254', '172.20.0.1', '172.32.0.1', '100.64.0.0']);
 const ALLOWED_EMAIL_DOMAINS = /@(example\.(com|org|net)|yourdomain\.(com|example))$/i;
